@@ -300,12 +300,9 @@ class Commands:
         return self.wallet.get_public_keys(address)
 
     @command('w')
-    def getbalance(self, account=None):
+    def getbalance(self):
         """Return the balance of your wallet. """
-        if account is None:
-            c, u, x = self.wallet.get_balance()
-        else:
-            c, u, x = self.wallet.get_account_balance(account)
+        c, u, x = self.wallet.get_balance()
         out = {"confirmed": str(Decimal(c)/COIN)}
         if u:
             out["unconfirmed"] = str(Decimal(u)/COIN)
@@ -499,7 +496,7 @@ class Commands:
     def listaddresses(self, receiving=False, change=False, show_labels=False, frozen=False, unused=False, funded=False, show_balance=False):
         """List wallet addresses. Returns the list of all addresses in your wallet. Use optional arguments to filter the results."""
         out = []
-        for addr in self.wallet.addresses(True):
+        for addr in self.wallet.get_addresses():
             if frozen and not self.wallet.is_frozen(addr):
                 continue
             if receiving and self.wallet.is_change(addr):
@@ -681,7 +678,6 @@ command_options = {
     'unsigned':    ("-u", "--unsigned",    "Do not sign transaction"),
     'rbf':         (None, "--rbf",         "Replace-by-fee transaction"),
     'domain':      ("-D", "--domain",      "List of addresses"),
-    'account':     (None, "--account",     "Account"),
     'memo':        ("-m", "--memo",        "Description of the request"),
     'expiration':  (None, "--expiration",  "Time in seconds"),
     'timeout':     (None, "--timeout",     "Timeout in seconds"),

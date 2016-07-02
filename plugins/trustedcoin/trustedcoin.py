@@ -187,26 +187,12 @@ server = TrustedCoinCosignerClient(user_agent="Electrum/" + version.ELECTRUM_VER
 class Wallet_2fa(Multisig_Wallet):
 
     def __init__(self, storage):
-        BIP32_Wallet.__init__(self, storage)
-        self.wallet_type = '2fa'
-        self.m = 2
-        self.n = 3
+        #self.wallet_type = '2of3'
+        Multisig_Wallet.__init__(self, storage)
+        #self.m = 2
+        #self.n = 3
         self.is_billing = False
         self.billing_info = None
-
-    def get_action(self):
-        xpub1 = self.master_public_keys.get("x1/")
-        xpub2 = self.master_public_keys.get("x2/")
-        xpub3 = self.master_public_keys.get("x3/")
-        if xpub2 is None and not self.storage.get('use_trustedcoin'):
-            return 'show_disclaimer'
-        if xpub2 is None:
-            return 'create_extended_seed'
-        if xpub3 is None:
-            return 'create_remote_key'
-
-    def make_seed(self):
-        return Mnemonic('english').make_seed(num_bits=256, prefix=SEED_PREFIX)
 
     def can_sign_without_server(self):
         return self.master_private_keys.get('x2/') is not None
@@ -316,6 +302,7 @@ class TrustedCoinPlugin(BasePlugin):
     def __init__(self, parent, config, name):
         BasePlugin.__init__(self, parent, config, name)
         self.wallet_class.plugin = self
+        print "init plugin"
 
     @staticmethod
     def is_valid_seed(seed):
@@ -345,10 +332,13 @@ class TrustedCoinPlugin(BasePlugin):
         wallet.price_per_tx = dict(billing_info['price_per_tx'])
         return True
 
+    def make_seed(self):
+        return Mnemonic('english').make_seed(num_bits=256, prefix=SEED_PREFIX)
+
     def create_extended_seed(self, wallet, wizard):
-        self.wallet = wallet
+        #self.wallet = wallet
         self.wizard = wizard
-        seed = wallet.make_seed()
+        seed = self.make_seed()
         self.wizard.show_seed_dialog(run_next=wizard.confirm_seed, seed_text=seed)
 
     def show_disclaimer(self, wallet, wizard):
@@ -439,3 +429,16 @@ class TrustedCoinPlugin(BasePlugin):
             return
         wallet.add_master_public_key('x3/', xpub3)
         window.run('create_addresses')
+
+    @hook
+    def get_action(self, storage):
+        master_public_keys = storage.get('master_public_keys')
+        xpub1 = master_public_keys.get("x1/")
+        xpub2 = master_public_keys.get("x2/")
+        xpub3 = master_public_keys.get("x3/")
+        if xpub2 is None and not storage.get('use_trustedcoin'):
+            return 'show_disclaimer'
+        if xpub2 is None:
+            return 'create_extended_seed'
+        if xpub3 is None:
+            return 'create_remote_key'

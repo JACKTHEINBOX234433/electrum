@@ -37,8 +37,8 @@ class HW_PluginBase(BasePlugin):
 
     def __init__(self, parent, config, name):
         BasePlugin.__init__(self, parent, config, name)
-        self.device = self.wallet_class.device
-        self.wallet_class.plugin = self
+        self.device = self.keystore_class.device
+        self.keystore_class.plugin = self
 
     def is_enabled(self):
         return self.libraries_available
@@ -48,11 +48,11 @@ class HW_PluginBase(BasePlugin):
 
     @hook
     def close_wallet(self, wallet):
-        if isinstance(wallet, self.wallet_class):
+        if isinstance(wallet.get_keystore(), self.keystore_class):
             self.device_manager().unpair_wallet(wallet)
 
     def on_restore_wallet(self, wallet, wizard):
-        assert isinstance(wallet, self.wallet_class)
+        assert isinstance(wallet.keystore, self.keystore_class)
         msg = _("Enter the seed for your %s wallet:" % self.device)
         f = lambda x: wizard.run('on_restore_seed', x)
         wizard.enter_seed_dialog(run_next=f, title=_('Restore hardware wallet'), message=msg, is_valid=self.is_valid_seed)
@@ -67,7 +67,7 @@ class HW_PluginBase(BasePlugin):
 
     def on_restore_password(self, wallet, wizard, seed, passphrase, password):
         # Restored wallets are not hardware wallets
-        wallet_class = self.wallet_class.restore_wallet_class
+        keystore_class = self.keystore_class.restore_wallet_class
         wallet.storage.put('wallet_type', wallet_class.wallet_type)
         wallet = wallet_class(wallet.storage)
         wallet.add_seed(seed, password)
