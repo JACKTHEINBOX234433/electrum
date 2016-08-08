@@ -8,7 +8,7 @@ from functools import partial
 from electrum.account import BIP32_Account
 from electrum.bitcoin import (bc_address_to_hash_160, xpub_from_pubkey,
                               public_key_to_bc_address, EncodeBase58Check,
-                              TYPE_ADDRESS)
+                              TYPE_ADDRESS, TYPE_SCRIPT)
 from electrum.i18n import _
 from electrum.plugins import BasePlugin, hook
 from electrum.transaction import (deserialize, is_extended_pubkey,
@@ -305,21 +305,26 @@ class TrezorCompatiblePlugin(HW_PluginBase):
     def tx_outputs(self, derivation, tx):
         outputs = []
         for i, (_type, address, amount) in enumerate(tx.outputs()):
-            change, index = tx.output_info[i]
-            assert _type == TYPE_ADDRESS
             txoutputtype = self.types.TxOutputType()
-            if change is not None:
-                address_path = "%s/%d/%d/"%(derivation, change, index)
-                address_n = self.client_class.expand_path(address_path)
-                txoutputtype.address_n.extend(address_n)
-            else:
-                txoutputtype.address = address
             txoutputtype.amount = amount
-            addrtype, hash_160 = bc_address_to_hash_160(address)
-            if addrtype == 0:
-                txoutputtype.script_type = self.types.PAYTOADDRESS
-            elif addrtype == 5:
-                txoutputtype.script_type = self.types.PAYTOSCRIPTHASH
+            change, index = tx.output_info[i]
+            if _type == TYPE_SCRIPT:
+                txoutputtype.script_type = self.types.PAYTOOPRETURN
+                txoutputtype.op_return_data = address[2:]
+            elif _type == TYPE_ADDRESS:
+                if change is not None:
+                    address_path = "%s/%d/%d/"%(derivation, change, index)
+                    address_n = self.client_class.expand_path(address_path)
+                    txoutputtype.address_n.extend(address_n)
+                else:
+                    txoutputtype.address = address
+                addrtype, hash_160 = bc_address_to_hash_160(address)
+                if addrtype == 0:
+                    txoutputtype.script_type = self.types.PAYTOADDRESS
+                elif addrtype == 5:
+                    txoutputtype.script_type = self.types.PAYTOSCRIPTHASH
+                else:
+                    raise BaseException('addrtype')
             else:
                 raise BaseException('addrtype')
             outputs.append(txoutputtype)
